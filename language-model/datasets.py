@@ -154,7 +154,7 @@ class OpensubsData:
         conversations = []
         dirList = self.filesInDir(dirName)
         for filepath in tqdm(dirList, "OpenSubtitles data files"):
-            if filepath.endswith('gz'):
+            if filepath.endswith('.xml'):
                 try:
                     doc = self.getXML(filepath)
                     conversations.extend(self.genList(doc))
