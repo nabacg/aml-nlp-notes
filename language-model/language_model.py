@@ -111,7 +111,7 @@ def loss_function(real, pred):
     return tf.reduce_mean(loss_)
 
 
-def train_model(encoder, decoder, optimizer, dataset, batch_size, start_word_index, epochs, checkpoint_prefix):
+def train_model(encoder, decoder, optimizer, dataset, batch_size, n_batch,  start_word_index, epochs, checkpoint_prefix):
     for epoch in range(epochs):
         start = time.time()
         
@@ -157,5 +157,5 @@ def train_model(encoder, decoder, optimizer, dataset, batch_size, start_word_ind
             checkpoint.save(file_prefix = checkpoint_prefix)
         
         print('Epoch {} Loss {:.4f}'.format(epoch + 1,
-                                            total_loss / N_BATCH))
+                                            total_loss / n_batch))
         print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
