@@ -7,7 +7,7 @@ tf.enable_eager_execution()
 
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from seq2seqdataprocessing import word_to_idx
+from seq2seqdataprocessing import word_to_idx, preprocess_sentence
 import unicodedata
 import re
 import numpy as np
@@ -160,3 +160,67 @@ def train_model(encoder, decoder, optimizer, dataset,
         print('Epoch {} Loss {:.4f}'.format(epoch + 1,
                                             total_loss / n_batch))
         print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
+
+
+# function for plotting the attention weights
+def plot_attention(attention, sentence, predicted_sentence):
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(1, 1, 1)
+    ax.matshow(attention, cmap='viridis')
+    
+    fontdict = {'fontsize': 14}
+    
+    ax.set_xticklabels([''] + sentence, fontdict=fontdict, rotation=90)
+    ax.set_yticklabels([''] + predicted_sentence, fontdict=fontdict)
+
+    plt.show()
+
+
+def evaluate(sentence, encoder, decoder, dictionary_index, units,  max_length):
+    word2idx = dictionary_index[0]
+    idx2word = dictionary_index[1]
+    attention_plot = np.zeros((max_length, max_length))
+    
+    sentence = preprocess_sentence(sentence)
+
+    inputs = [word2idx[i] for i in sentence.split(' ')]
+    inputs = tf.keras.preprocessing.sequence.pad_sequences([inputs], maxlen=max_length, padding='post')
+    inputs = tf.convert_to_tensor(inputs)
+    
+    result = ''
+
+    hidden = [tf.zeros((1, units))]
+    enc_out, enc_hidden = encoder(inputs, hidden)
+
+    dec_hidden = enc_hidden
+    dec_input = tf.expand_dims([word2idx['<start>']], 0)
+
+    for t in range(max_length):
+        predictions, dec_hidden, attention_weights = decoder(dec_input, dec_hidden, enc_out)
+        
+        # storing the attention weights to plot later on
+        attention_weights = tf.reshape(attention_weights, (-1, ))
+        attention_plot[t] = attention_weights.numpy()
+
+        predicted_id = tf.argmax(predictions[0]).numpy()
+
+        result += idx2word[predicted_id] + ' '
+
+        if idx2word[predicted_id] == '<end>':
+            return result, sentence, attention_plot
+        
+        # the predicted ID is fed back into the model
+        dec_input = tf.expand_dims([predicted_id], 0)
+
+    return result, sentence, attention_plot
+
+
+
+def answer(sentence, encoder, decoder, dictionary_index, units, max_length):
+    result, sentence, attention_plot = evaluate(sentence, encoder, decoder, dictionary_index, units, max_length)
+        
+    print('Input: {}'.format(sentence))
+    print('Predicted translation: {}'.format(result))
+    
+    attention_plot = attention_plot[:len(result.split(' ')), :len(sentence.split(' '))]
+    plot_attention(attention_plot, sentence.split(' '), result.split(' '))
