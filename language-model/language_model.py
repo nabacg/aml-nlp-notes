@@ -215,7 +215,7 @@ def evaluate(sentence, encoder, decoder, dictionary_index, units,  max_length):
     
     sentence = preprocess_sentence(sentence)
 
-    inputs = [word_to_idx(i) for i in sentence.split(' ')]
+    inputs = [word_to_idx(word2idx, i) for i in sentence.split(' ')]
     inputs = tf.keras.preprocessing.sequence.pad_sequences([inputs], maxlen=max_length, padding='post')
     inputs = tf.convert_to_tensor(inputs)
     
@@ -225,7 +225,7 @@ def evaluate(sentence, encoder, decoder, dictionary_index, units,  max_length):
     enc_out, enc_hidden = encoder(inputs, hidden)
 
     dec_hidden = enc_hidden
-    dec_input = tf.expand_dims([word_to_idx('<start>')], 0)
+    dec_input = tf.expand_dims([word_to_idx(word2idx, '<start>')], 0)
 
     for t in range(max_length):
         predictions, dec_hidden, attention_weights = decoder(dec_input, dec_hidden, enc_out)
