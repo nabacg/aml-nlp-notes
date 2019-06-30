@@ -65,7 +65,7 @@ def load_embeddings(embeddings_path, word2idx):
     return starspace_embeddings, embedding_dim, embedding_matrix
 
 class Encoder(tf.keras.Model):
-    def __init__(self, vocab_size, embedding_dim, enc_units, batch_sz, embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)):
+    def __init__(self, vocab_size, embedding_dim, enc_units, batch_sz, embedding ): # todo figure out how to load default of = tf.keras.layers.Embedding(vocab_size, embedding_dim)
         super(Encoder, self).__init__()
         self.batch_sz = batch_sz
         self.enc_units = enc_units
@@ -83,7 +83,7 @@ class Encoder(tf.keras.Model):
 
 
 class Decoder(tf.keras.Model):
-    def __init__(self, vocab_size, embedding_dim, dec_units, batch_sz, embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)):
+    def __init__(self, vocab_size, embedding_dim, dec_units, batch_sz, embedding):
         super(Decoder, self).__init__()
         self.batch_sz = batch_sz
         self.dec_units = dec_units
