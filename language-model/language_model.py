@@ -33,13 +33,46 @@ def gru(units):
                                recurrent_activation='sigmoid', 
                                recurrent_initializer='glorot_uniform')
 
+def load_embeddings(embeddings_path, word2idx):
+    """Loads pre-trained word embeddings from tsv file.
+
+    Args:
+      embeddings_path - path to the embeddings file.
+
+    Returns:
+      embeddings - dict mapping words to vectors;
+      embeddings_dim - dimension of the vectors.
+    """
+
+    starspace_embeddings = {}
+    for line in open(embeddings_path, 'r'):
+        word, *embs = line.strip().split('\t')
+        starspace_embeddings[word] = np.array(list(map(float, embs)),  dtype=np.float32)
+
+    embedding_dim = starspace_embeddings[next(iter(starspace_embeddings))].shape[0]
+
+    # 2.prepare embedding matrix
+    print('Filling pre-trained embeddings...')
+    num_words = len(word2idx)
+    # initialization by zeros
+    embedding_matrix = np.zeros((num_words, embedding_dim))
+    for word, i in word2idx.items():
+        embedding_vector = starspace_embeddings.get(word)
+        if embedding_vector is not None:
+                  # words not found in embedding index will be all zeros.
+            embedding_matrix[i] = embedding_vector
+
+    return starspace_embeddings, embedding_dim, embedding_matrix
 
 class Encoder(tf.keras.Model):
-    def __init__(self, vocab_size, embedding_dim, enc_units, batch_sz):
+    def __init__(self, vocab_size, embedding_dim, enc_units, batch_sz, pretrained_emb = None):
         super(Encoder, self).__init__()
         self.batch_sz = batch_sz
         self.enc_units = enc_units
-        self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
+        if pretrained_emb:
+            self.embedding = pretrained_emb
+        else:
+            self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
         self.gru = gru(self.enc_units)
         
     def call(self, x, hidden):
@@ -52,11 +85,17 @@ class Encoder(tf.keras.Model):
 
 
 class Decoder(tf.keras.Model):
-    def __init__(self, vocab_size, embedding_dim, dec_units, batch_sz):
+    def __init__(self, vocab_size, embedding_dim, dec_units, batch_sz, pretrained_emb = None):
         super(Decoder, self).__init__()
         self.batch_sz = batch_sz
         self.dec_units = dec_units
-        self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
+
+        if pretrained_emb:
+            self.embedding = pretrained_emb
+        else:
+            self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
+        
+
         self.gru = gru(self.dec_units)
         self.fc = tf.keras.layers.Dense(vocab_size)
         
