@@ -108,15 +108,16 @@ def load_dataset(dataset_name = 'cornell', max_sentence_length= 10):
     
     # Calculate max_length of input and output tensor
     # Here, we'll set those to the longest sentence in the dataset
-    max_length_inp, max_length_tar = max_length(input_tensor), max_length(target_tensor)
+    # max_length_inp, max_length_tar = max_length(input_tensor), max_length(target_tensor)
+
     
     # Padding the input and output tensor to the maximum length
     input_tensor = tf.keras.preprocessing.sequence.pad_sequences(input_tensor, 
-                                                                 maxlen=max_length_inp,
+                                                                 maxlen=max_sentence_length,
                                                                  padding='post')
     
     target_tensor = tf.keras.preprocessing.sequence.pad_sequences(target_tensor, 
-                                                                  maxlen=max_length_tar, 
+                                                                  maxlen=max_sentence_length, 
                                                                   padding='post')
     
-    return input_tensor, target_tensor, (word2idx, idx2word, vocab), max_length_inp, max_length_tar
+    return input_tensor, target_tensor, (word2idx, idx2word, vocab), max_sentence_length
