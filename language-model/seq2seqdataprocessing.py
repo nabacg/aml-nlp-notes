@@ -22,7 +22,7 @@ def preprocess_sentence(w):
     w = re.sub(r'[" "]+', " ", w)
     
     # replacing everything with space except (a-z, A-Z, ".", "?", "!", ",")
-#     w = re.sub(r"[^a-zA-Z?.!,¿]+", " ", w)
+    w = re.sub(r"[^a-zA-Z?.!,¿]+", " ", w)
     w = re.sub(r"[^a-zA-Z]+", " ", w)
     w = w.rstrip().strip()
     
@@ -88,10 +88,6 @@ def create_dataset(dataset_name, max_sentence_length):
 def max_length(tensor):
     return max(len(t) for t in tensor)
 
-# def preprocess_sentence(s):
-#     return '<start> ' + s + ' <end>'
-
-
 def load_dataset(dataset_name = 'cornell', max_sentence_length= 10):
     # creating cleaned input, output pairs
     pairs = [(preprocess_sentence(a), preprocess_sentence(b)) for (a,b) in create_dataset(dataset_name, max_sentence_length)]
@@ -120,4 +116,4 @@ def load_dataset(dataset_name = 'cornell', max_sentence_length= 10):
                                                                   maxlen=max_sentence_length, 
                                                                   padding='post')
     
-    return input_tensor, target_tensor, (word2idx, idx2word, vocab), max_sentence_length
+    return input_tensor, target_tensor, (word2idx, idx2word, vocab)

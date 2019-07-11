@@ -42,6 +42,8 @@ def load_embeddings(embeddings_path, word2idx):
     Returns:
       embeddings - dict mapping words to vectors;
       embeddings_dim - dimension of the vectors.
+
+    
     """
 
     starspace_embeddings = {}
@@ -51,7 +53,7 @@ def load_embeddings(embeddings_path, word2idx):
 
     embedding_dim = starspace_embeddings[next(iter(starspace_embeddings))].shape[0]
 
-    # 2.prepare embedding matrix
+    # 2.prepare embedding matrix - inspired by  https://stackoverflow.com/a/56820340
     print('Filling pre-trained embeddings...')
     num_words = len(word2idx)
     # initialization by zeros
@@ -248,11 +250,15 @@ def evaluate(sentence, encoder, decoder, dictionary_index, units,  max_length):
 
 
 
-def answer(sentence, encoder, decoder, dictionary_index, units, max_length):
+def answer(sentence, encoder, decoder, dictionary_index, units, max_length, print_debug=True):
     result, sentence, attention_plot = evaluate(sentence, encoder, decoder, dictionary_index, units, max_length)
-        
-    print('Input: {}'.format(sentence))
-    print('Predicted translation: {}'.format(result))
     
-    attention_plot = attention_plot[:len(result.split(' ')), :len(sentence.split(' '))]
-    plot_attention(attention_plot, sentence.split(' '), result.split(' '))
+    if print_debug:
+      print('Input: {}'.format(sentence))
+      print('Answer: {}'.format(result))
+      attention_plot = attention_plot[:len(result.split(' ')), :len(sentence.split(' '))]
+      plot_attention(attention_plot, sentence.split(' '), result.split(' '))
+    return result
+
+def create_bot(encoder, decoder, dictionary_index, units, max_length):
+    return lambda q: answer(q, encoder, decoder, dict_index, units, max_length, print_debug=False)
