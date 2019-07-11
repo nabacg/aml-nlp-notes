@@ -3,6 +3,7 @@ import os
 import re
 from collections import Counter
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
 
 
 # Converts the unicode file to ascii
@@ -36,15 +37,15 @@ def preprocess_sentence(w):
 
 
 UNK_WORD_INDEX = 1
-def create_index(phrases, vocab_size): 
+def create_index(phrases, max_vocab_size): 
     word2idx = {}
 #     vocab_size = 15000 
     idx2word = {}
-    vocab = set()
+    # vocab = set()
     # https://docs.python.org/3/library/collections.html#collections.Counter
     wordcount = Counter([p for s in phrases for p in s.split(' ')])
-
-    vocab = sorted([w for (w, c) in wordcount.most_common(vocab_size)])
+    wordcount = sorted([(k,v) for (k,v) in wordcount.items() if v > 1], key=lambda kv: kv[1], reverse=True)[:max_vocab_size]
+    vocab = sorted([w for (w, c) in wordcount]) # todo vocabsize should be -2 for <pad> and <unk>
     
     word2idx['<pad>'] = 0
     word2idx['<unk>'] = UNK_WORD_INDEX
@@ -71,7 +72,7 @@ def readTwitterData():
   data_file =  open('data/chat_corpus/twitter_en.txt')
   return [(preprocess_sentence(q), preprocess_sentence(a)) for (q,a) in grouped(data_file, 2)]
  
-def create_dataset(dataset_name, max_sentence_length):
+def read_dataset(dataset_name, max_sentence_length):
     dataset_path = 'data/{}'.format(dataset_name)
 
     if dataset_name == "cornell":
@@ -90,10 +91,10 @@ def max_length(tensor):
 
 def load_dataset(dataset_name = 'cornell', max_sentence_length= 10, vocab_size=15000): # why 15k ? because that's what they used in https://arxiv.org/pdf/1406.1078.pdf
     # creating cleaned input, output pairs
-    pairs = [(preprocess_sentence(a), preprocess_sentence(b)) for (a,b) in create_dataset(dataset_name, max_sentence_length)]
+    pairs = [(preprocess_sentence(a), preprocess_sentence(b)) for (a,b) in read_dataset(dataset_name, max_sentence_length)]
 
     # index language using the class defined above    
-    word2idx, idx2word, vocab = create_index([p for ps in pairs for p in ps], vocab_size=vocab_size)
+    word2idx, idx2word, vocab = create_index([p for ps in pairs for p in ps], max_vocab_size=vocab_size)
     # Vectorize the input and target languages
     
     # question sentences
@@ -117,3 +118,25 @@ def load_dataset(dataset_name = 'cornell', max_sentence_length= 10, vocab_size=1
                                                                   padding='post')
     
     return input_tensor, target_tensor, (word2idx, idx2word, vocab)
+
+
+def create_dataset(batch_size, dataset_name = 'cornell', max_sentence_length= 10, vocab_size=15000):
+
+  input_tensor, target_tensor, dict_index = load_dataset(dataset_name = dataset_name, 
+                                                       max_sentence_length=max_sentence_length, 
+                                                       vocab_size=vocab_size) 
+
+  word2idx = dict_index[0]
+  idx2word = dict_index[1]
+
+  # Creating training and validation sets using an 80-20 split
+  input_tensor_train, input_tensor_val, target_tensor_train, target_tensor_val = train_test_split(input_tensor, target_tensor, test_size=0.1)
+
+  buffer_size = len(input_tensor_train)
+  train_dataset = tf.data.Dataset.from_tensor_slices((input_tensor_train, target_tensor_train)).shuffle(buffer_size)
+  train_dataset = train_dataset.batch(batch_size, drop_remainder=True)
+
+  validation_ds = tf.data.Dataset.from_tensor_slices((input_tensor_val, target_tensor_val)).shuffle(len(input_tensor_val))
+  validation_ds = validation_ds.batch(batch_size, drop_remainder=True)
+
+  return train_dataset, validation_ds, word2idx, idx2word

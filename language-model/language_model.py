@@ -21,13 +21,18 @@ print(tf.__version__)
 def gru(units):
   # If you have a GPU, we recommend using CuDNNGRU(provides a 3x speedup than GRU)
   # the code automatically does that.
-    if tf.test.is_gpu_available():
-        return tf.keras.layers.CuDNNGRU(units, 
-                                    return_sequences=True, 
-                                    return_state=True, 
-                                    recurrent_initializer='glorot_uniform')
-    else:
-        return tf.keras.layers.GRU(units, 
+    # if tf.test.is_gpu_available():
+
+    # since this has caused issues with restoring model weights trained on Colab
+    # i.e. Checkpoint files are not compatible between CuDNNGRU and GRU I'm hardcoding it to CuDNNGRU
+    # more details on this https://github.com/tensorflow/tensorflow/issues/25081
+    # if True:
+    #     return tf.keras.layers.CuDNNGRU(units, 
+    #                                 return_sequences=True, 
+    #                                 return_state=True, 
+    #                                 recurrent_initializer='glorot_uniform')
+    # else:
+    return tf.keras.layers.GRU(units, 
                                return_sequences=True, 
                                return_state=True, 
                                recurrent_activation='sigmoid', 
@@ -145,42 +150,60 @@ def loss_function(real, pred):
     return tf.reduce_mean(loss_)
 
 
+def create_checkpoints(optimizer, encoder, decoder, root_dir):
+    checkpoint = tf.train.Checkpoint(optimizer=optimizer,
+                                 encoder=encoder,
+                                 decoder=decoder)
+
+    manager = tf.train.CheckpointManager(checkpoint, 
+                                    root_dir, 
+                                    max_to_keep=3)
+
+    return checkpoint, manager
+
+
+def create_models(vocab_size, word2idx, units, batch_size, pretrained_embeddings_file, embedding_dim=256):
+    if pretrained_embeddings_file:
+        _, embedding_dim, emb_matrix  = load_embeddings(pretrained_embeddings_file, word2idx)
+
+        embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim, 
+                                           embeddings_initializer = tf.initializers.constant(emb_matrix),
+                                           trainable=True)
+    else:
+        embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
+
+    encoder = Encoder(vocab_size, embedding_dim, units, batch_size, embedding)
+    decoder = Decoder(vocab_size, embedding_dim, units, batch_size, embedding)
+    optimizer = tf.train.AdamOptimizer()
+
+    return encoder, decoder, optimizer
+
 def train_model(encoder, decoder, optimizer, dataset, 
                 batch_size, n_batch,  start_word_index, epochs, save_checkpoint):
     for epoch in range(epochs):
         start = time.time()
-        
         hidden = encoder.initialize_hidden_state()
         total_loss = 0
         
         for (batch, (inp, targ)) in enumerate(dataset):
             loss = 0
-            
             with tf.GradientTape() as tape:
                 enc_output, enc_hidden = encoder(inp, hidden)
-                
-                dec_hidden = enc_hidden
-                
+                dec_hidden = enc_hidden            
                 dec_input = tf.expand_dims([start_word_index] * batch_size, 1)       
                 
                 # Teacher forcing - feeding the target as the next input
                 for t in range(1, targ.shape[1]):
                     # passing enc_output to the decoder
                     predictions, dec_hidden, _ = decoder(dec_input, dec_hidden, enc_output)
-
                     loss += loss_function(targ[:, t], predictions)
-                    
                     # using teacher forcing
                     dec_input = tf.expand_dims(targ[:, t], 1)
             
             batch_loss = (loss / int(targ.shape[1]))
-            
             total_loss += batch_loss
-            
             variables = encoder.variables + decoder.variables
-            
             gradients = tape.gradient(loss, variables)
-            
             optimizer.apply_gradients(zip(gradients, variables))
             
             if batch % 100 == 0:
@@ -190,7 +213,6 @@ def train_model(encoder, decoder, optimizer, dataset,
         # saving (checkpoint) the model every 2 epochs
         if (epoch + 1) % 2 == 0:
             save_checkpoint()
-        
         print('Epoch {} Loss {:.4f}'.format(epoch + 1,
                                             total_loss / n_batch))
         print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
@@ -210,9 +232,8 @@ def plot_attention(attention, sentence, predicted_sentence):
     plt.show()
 
 
-def evaluate(sentence, encoder, decoder, dictionary_index, units,  max_length):
-    word2idx = dictionary_index[0]
-    idx2word = dictionary_index[1]
+def evaluate(sentence, encoder, decoder, word2idx, idx2word, units, max_length):
+
     attention_plot = np.zeros((max_length, max_length))
     
     sentence = preprocess_sentence(sentence)
@@ -250,8 +271,8 @@ def evaluate(sentence, encoder, decoder, dictionary_index, units,  max_length):
 
 
 
-def gen_answer(sentence, encoder, decoder, dictionary_index, units, max_length, print_debug=True):
-    result, sentence, attention_plot = evaluate(sentence, encoder, decoder, dictionary_index, units, max_length)
+def gen_answer(sentence, encoder, decoder, word2idx, idx2word, units, max_length, print_debug=True):
+    result, sentence, attention_plot = evaluate(sentence, encoder, decoder, word2idx, idx2word, units, max_length)
     
     if print_debug:
       print('Input: {}'.format(sentence))
@@ -260,5 +281,5 @@ def gen_answer(sentence, encoder, decoder, dictionary_index, units, max_length, 
       plot_attention(attention_plot, sentence.split(' '), result.split(' '))
     return result
 
-def create_bot(encoder, decoder, dict_index, units, max_length):
-    return lambda q: gen_answer(q, encoder, decoder, dict_index, units, max_length, print_debug=False)
+def create_bot(encoder, decoder, word2idx, idx2word, units, max_length):
+    return lambda q: gen_answer(q, encoder, decoder, word2idx, idx2word, units, max_length, print_debug=False)
