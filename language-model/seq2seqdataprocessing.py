@@ -36,7 +36,7 @@ def preprocess_sentence(w):
 
 
 UNK_WORD_INDEX = 1
-def create_index(phrases, vocab_size = 15000):   # why 15k ? because that's what they used in https://arxiv.org/pdf/1406.1078.pdf
+def create_index(phrases, vocab_size): 
     word2idx = {}
 #     vocab_size = 15000 
     idx2word = {}
@@ -88,12 +88,12 @@ def create_dataset(dataset_name, max_sentence_length):
 def max_length(tensor):
     return max(len(t) for t in tensor)
 
-def load_dataset(dataset_name = 'cornell', max_sentence_length= 10):
+def load_dataset(dataset_name = 'cornell', max_sentence_length= 10, vocab_size=15000): # why 15k ? because that's what they used in https://arxiv.org/pdf/1406.1078.pdf
     # creating cleaned input, output pairs
     pairs = [(preprocess_sentence(a), preprocess_sentence(b)) for (a,b) in create_dataset(dataset_name, max_sentence_length)]
 
     # index language using the class defined above    
-    word2idx, idx2word, vocab = create_index([p for ps in pairs for p in ps])
+    word2idx, idx2word, vocab = create_index([p for ps in pairs for p in ps], vocab_size=vocab_size)
     # Vectorize the input and target languages
     
     # question sentences

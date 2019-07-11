@@ -250,7 +250,7 @@ def evaluate(sentence, encoder, decoder, dictionary_index, units,  max_length):
 
 
 
-def answer(sentence, encoder, decoder, dictionary_index, units, max_length, print_debug=True):
+def gen_answer(sentence, encoder, decoder, dictionary_index, units, max_length, print_debug=True):
     result, sentence, attention_plot = evaluate(sentence, encoder, decoder, dictionary_index, units, max_length)
     
     if print_debug:
@@ -260,5 +260,5 @@ def answer(sentence, encoder, decoder, dictionary_index, units, max_length, prin
       plot_attention(attention_plot, sentence.split(' '), result.split(' '))
     return result
 
-def create_bot(encoder, decoder, dictionary_index, units, max_length):
-    return lambda q: answer(q, encoder, decoder, dict_index, units, max_length, print_debug=False)
+def create_bot(encoder, decoder, dict_index, units, max_length):
+    return lambda q: gen_answer(q, encoder, decoder, dict_index, units, max_length, print_debug=False)
