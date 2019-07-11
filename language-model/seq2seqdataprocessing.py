@@ -139,4 +139,4 @@ def create_dataset(batch_size, dataset_name = 'cornell', max_sentence_length= 10
   validation_ds = tf.data.Dataset.from_tensor_slices((input_tensor_val, target_tensor_val)).shuffle(len(input_tensor_val))
   validation_ds = validation_ds.batch(batch_size, drop_remainder=True)
 
-  return train_dataset, validation_ds, word2idx, idx2word
+  return train_dataset, buffer_size // batch_size,  len(input_tensor_val) // batch_size, validation_ds,  word2idx, idx2word
